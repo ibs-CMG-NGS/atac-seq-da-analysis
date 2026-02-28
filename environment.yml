@@ -1,0 +1,59 @@
+name: atac-seq-da-analysis
+channels:
+  - conda-forge
+  - bioconda
+  - defaults
+dependencies:
+  # ── Python & Snakemake ──────────────────────────────────────
+  - python=3.11
+  - snakemake-minimal>=7.32
+
+  # ── R base ─────────────────────────────────────────────────
+  - r-base=4.3
+
+  # ── R: Core utility ────────────────────────────────────────
+  - r-yaml
+  - r-dplyr
+  - r-tidyr
+  - r-tibble
+  - r-stringr
+  - r-ggplot2
+  - r-ggrepel
+  - r-pheatmap
+  - r-rcolorbrewer
+  - r-openxlsx
+  - r-knitr
+  - r-rmarkdown
+
+  # ── R: Bioconductor - DA Analysis ─────────────────────────
+  - bioconductor-deseq2
+  - bioconductor-apeglm
+
+  # ── R: Bioconductor - Peak Annotation ─────────────────────
+  - bioconductor-chipseeker
+  - bioconductor-genomicranges
+  - bioconductor-genomicfeatures
+  - bioconductor-iranges
+  - bioconductor-rtracklayer
+
+  # ── R: Bioconductor - TxDb (genome annotation) ────────────
+  - bioconductor-txdb.hsapiens.ucsc.hg38.knowngene
+  - bioconductor-txdb.mmusculus.ucsc.mm10.knowngene
+
+  # ── R: Bioconductor - GO/KEGG Enrichment ──────────────────
+  - bioconductor-clusterprofiler
+  - bioconductor-enrichplot
+  - bioconductor-org.hs.eg.db
+  - bioconductor-org.mm.eg.db
+
+  # ── R: Bioconductor - chromVAR (optional) ─────────────────
+  # - bioconductor-chromvar
+  # - bioconductor-motifmatchr
+  # - bioconductor-bsgenome.hsapiens.ucsc.hg38
+  # - bioconductor-bsgenome.mmusculus.ucsc.mm10
+
+  # ── External: HOMER (motif analysis) ──────────────────────
+  - homer
+
+  # ── System ────────────────────────────────────────────────
+  - bedtools

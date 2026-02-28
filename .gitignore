@@ -1,0 +1,30 @@
+# ── Output / Results ──────────────────────────────────────────
+output/
+logs/
+.snakemake/
+
+# ── Data (project-specific, not tracked) ──────────────────────
+data/raw/*.txt
+data/raw/*.csv
+data/raw/*.bed
+data/raw/*.tsv
+!data/raw/.gitkeep
+
+# ── Project configs (track template only) ─────────────────────
+configs/config_*.yml
+!configs/template/config.yml
+
+# ── R / Python artifacts ───────────────────────────────────────
+*.Rhistory
+.Rdata
+*.pyc
+__pycache__/
+
+# ── HOMER output ───────────────────────────────────────────────
+homerResults/
+knownResults/
+*.motif
+
+# ── OS artifacts ───────────────────────────────────────────────
+.DS_Store
+*:Zone.Identifier

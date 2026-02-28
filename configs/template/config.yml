@@ -1,0 +1,166 @@
+# =============================================================
+# ATAC-Seq Differential Accessibility (DA) Analysis - Config
+# RNA-Seq_DE_GO_analysis 파이프라인 구조를 계승
+# =============================================================
+
+# -------------------------
+# Project Settings
+# -------------------------
+# 분석할 종을 선택합니다: "human" 또는 "mouse"
+species: "mouse"
+
+# -------------------------
+# File Paths
+# -------------------------
+# nf-core/atacseq final_outputs에서 복사 또는 직접 경로 지정
+
+# featureCounts.txt (consensus peaks × samples count matrix)
+# nf-core 출력 위치: results/bwa/mergedLibrary/macs2/broadPeak/consensus/
+#                    featureCounts/<prefix>.consensus_peaks.featureCounts.txt
+count_matrix_path: "data/raw/consensus_peaks.featureCounts.txt"
+
+# consensus peaks BED 파일 (HOMER/motif 분석 입력)
+# nf-core 출력 위치: results/bwa/mergedLibrary/macs2/broadPeak/consensus/
+#                    <prefix>.consensus_peaks.boolean.bed
+consensus_peaks_path: "data/raw/consensus_peaks.bed"
+
+# 샘플 메타데이터 CSV (행=sample_id, 열=condition 등)
+metadata_path: "data/raw/metadata.csv"
+
+output_dir: "output"
+
+# -------------------------
+# DA Analysis Parameters
+# -------------------------
+da_analysis:
+  # 사용할 분석 방법: 현재는 "DESeq2" 지원 (edgeR 추가 예정)
+  method: "DESeq2"
+
+  # 1. 디자인 공식: 배치 효과가 있다면 "~ batch + condition"
+  design_formula: "~ condition"
+
+  # 2. 그룹 변수: design_formula의 그룹 컬럼명
+  group_variable: "condition"
+
+  # 3. Pairwise Comparisons: [비교군, 기준군] 쌍으로 명시
+  #    pair 이름: {비교군}_vs_{기준군}
+  pairwise_comparisons:
+    - ["100uM",  "CONTROL"]
+    - ["200uM",  "CONTROL"]
+    # - ["Treatment_A", "Treatment_B"]
+
+  # 유의성 기준
+  padj_cutoff: 0.05
+  log2fc_cutoff: 1.0
+
+  # Peak 필터링: 최소 N개 샘플에서 min_peak_count 이상의 read가 있어야 분석 포함
+  min_peak_count: 10    # 개별 샘플에서의 최소 read count
+  min_sample_n: 2       # 위 기준을 만족해야 하는 최소 샘플 수
+
+# -------------------------
+# Peak Annotation & Enrichment
+# -------------------------
+enrichment:
+  # GO/KEGG에 사용할 유전자 목록
+  gene_lists: ["total", "up", "down"]
+  # Gene Ontology 종류
+  go_ontologies: ["BP", "CC", "MF"]
+
+  # Peak → Gene 매핑: TSS로부터의 최대 거리 (bp)
+  # 이 범위 내 TSS를 가진 유전자를 peak의 타겟 유전자로 사용
+  tss_distance: 10000
+
+  # GO/KEGG 파라미터
+  pvalue_cutoff: 0.05
+  qvalue_cutoff: 0.25
+  min_gs_size: 5
+  max_gs_size: 500
+  min_gene_count: 2   # 결과에서 Count < 이 값인 term 제외
+  plot_top_n: 15
+
+# -------------------------
+# Motif Analysis (HOMER)
+# -------------------------
+motif:
+  run_motif: false    # true로 변경 시 HOMER motif 분석 실행
+
+  # HOMER genome 이름 (homer 패키지에 등록된 이름)
+  # human: hg38, hg19
+  # mouse: mm10 (mm39는 mm10으로 대체 사용)
+  homer_genome: "mm10"
+
+  # 분석할 DA peak 그룹
+  gene_lists: ["up", "down"]  # "total" 추가 가능
+
+  # HOMER 실행 옵션
+  homer_options: "-size 200 -mask"  # -size: peak 크기, -mask: repeat masking
+
+# -------------------------
+# chromVAR (TF activity, optional)
+# -------------------------
+chromvar:
+  run_chromvar: false   # 컴퓨팅 비용이 크므로 기본 비활성화
+
+# -------------------------
+# QC Plots Settings
+# -------------------------
+qc_plots:
+  generate_global_qc: true
+  generate_pairwise_qc: true
+  sample_distance_method: "euclidean"
+  top_peaks_n: 500       # PCA/heatmap에 사용할 상위 가변 peak 수 (RNA-seq top_genes_n 대응)
+  ma_plot_ylim: [-5, 5]
+  heatmap_cluster_rows: true
+  heatmap_cluster_cols: true
+
+# -------------------------
+# Annotation Databases (자동 설정 - 수정 불필요)
+# -------------------------
+databases:
+  human:
+    organism_db: "org.Hs.eg.db"
+    kegg_code: "hsa"
+    txdb: "TxDb.Hsapiens.UCSC.hg38.knownGene"
+    bsgenome: "BSgenome.Hsapiens.UCSC.hg38"
+  mouse:
+    organism_db: "org.Mm.eg.db"
+    kegg_code: "mmu"
+    txdb: "TxDb.Mmusculus.UCSC.mm10.knownGene"   # mm39는 mm10 TxDb 사용
+    bsgenome: "BSgenome.Mmusculus.UCSC.mm10"
+
+# -------------------------
+# Plot Aesthetics
+# -------------------------
+plot_aesthetics:
+  volcano:
+    title: "Volcano Plot"
+    up_color: "#FF5733"     # 더 열린 region (처리군)
+    down_color: "#3375FF"   # 덜 열린 region (처리군)
+    base_color: "grey"
+    point_size: 2.0
+    label_top_n: 0
+    base_font_size: 14
+
+  dotplot:
+    x_axis_variable: "GeneRatio"
+    show_n_categories: 15
+    font_size: 12
+    low_color: "#FFC300"
+    high_color: "#C70039"
+
+# -------------------------
+# GO Bar Plot Settings
+# -------------------------
+go_barplot:
+  top_n: 10
+  namespaces: ["BP", "CC", "MF"]
+  colors:
+    BP: "#E57373"
+    CC: "#64B5F6"
+    MF: "#81C784"
+
+# -------------------------
+# Export Options
+# -------------------------
+export:
+  export_to_excel: true
