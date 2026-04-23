@@ -16,7 +16,8 @@ configs/config_*.yml
 
 # ── R / Python artifacts ───────────────────────────────────────
 *.Rhistory
-.Rdata
+*.RData
+*.Rdata
 *.pyc
 __pycache__/
 
@@ -25,6 +26,14 @@ homerResults/
 knownResults/
 *.motif
 
+# ── IDE / Editor ───────────────────────────────────────────────
+*.code-workspace
+.vscode/
+
+# ── Claude Code (local settings only) ─────────────────────────
+.claude/settings.local.json
+
 # ── OS artifacts ───────────────────────────────────────────────
 .DS_Store
+Thumbs.db
 *:Zone.Identifier

@@ -1,7 +1,7 @@
 # ATAC-Seq DA Analysis Pipeline
 
 ATAC-seq Differential Accessibility (DA) 3차 분석 파이프라인.
-nf-core/atacseq (2차 분석) 출력을 입력으로 받아 DA 분석 → 피크 어노테이션 → GO/KEGG → 모티프 분석까지 수행합니다.
+nf-core/atacseq (2차 분석) 출력을 입력으로 받아 DA 분석 → 피크 어노테이션 → GO/KEGG → 모티프 분석 → TF activity 분석까지 수행합니다.
 
 RNA-Seq_DE_GO_analysis 파이프라인과 동일한 Snakemake 구조를 채택합니다.
 
@@ -16,13 +16,14 @@ nf-core/atacseq 출력
 
           ↓
 
-01_run_pairwise_da.R      DESeq2 Differential Accessibility
-02a_global_qc.R           PCA, Sample distance heatmap (전체 샘플)
+01_run_pairwise_da.R      DESeq2 Differential Accessibility (LFC shrinkage 포함)
+02a_global_qc.R           PCA, Sample distance heatmap, Top peaks heatmap (전체 샘플)
 02c_pairwise_plots.R      Volcano, MA plot (비교별)
-03_peak_annotation_go.R   ChIPseeker → GO/KEGG (clusterProfiler)
-04_go_barplots.R          GO barplots
-05_motif_analysis.R       HOMER motif enrichment (ATAC-specific)
+03_peak_annotation_go.R   ChIPseeker → Genomic distribution + GO/KEGG (clusterProfiler)
+04_go_barplots.R          GO barplots (ontology별 + combined)
+05_motif_analysis.R       HOMER motif enrichment — known & de novo (선택)
 06_generate_da_table.R    Excel 통합 요약
+07_chromvar_analysis.R    chromVAR TF activity deviation score (선택)
 
           ↓
 
@@ -30,8 +31,11 @@ output/{pair}/
   ├── final_da_results.csv
   ├── normalized_counts.csv
   ├── volcano_plot.png / ma_plot.png
+  ├── peak_distribution_{total|up|down}.png
+  ├── peak_annotation_{total|up|down}.csv
   ├── go_enrichment_*.csv / kegg_enrichment_*.csv
   ├── motif/up/ , motif/down/
+  ├── chromvar/
   └── final_da_summary.xlsx
 ```
 
@@ -45,7 +49,7 @@ output/{pair}/
 conda env create -f environment.yml
 conda activate atac-seq-da-analysis
 
-# HOMER genome 설치 (최초 1회, 예: mm10)
+# HOMER genome 설치 (run_motif: true 사용 시, 최초 1회)
 perl $(which configureHomer.pl) -install mm10
 ```
 
@@ -92,6 +96,12 @@ da_analysis:
 motif:
   run_motif: true          # HOMER 실행 여부
   homer_genome: "mm10"
+
+chromvar:
+  run_chromvar: true       # chromVAR 실행 여부
+  jaspar_collection: "CORE"
+  top_tfs_n: 30
+  n_workers: 4             # 병렬 처리 worker 수 (Linux/WSL)
 ```
 
 ### 4. 실행
@@ -118,7 +128,9 @@ snakemake output/pairwise/100uM_vs_CONTROL/final_da_results.csv \
 | 분석 단위 | 유전자 | genomic peak region |
 | DE/DA 도구 | DESeq2 / edgeR / limma | DESeq2 |
 | GO/KEGG | gene list 직접 사용 | peak → ChIPseeker → gene → GO |
-| 추가 분석 | — | HOMER motif enrichment |
+| Genomic distribution | — | Promoter/Exon/Intron 등 분포 시각화 |
+| Motif enrichment | — | HOMER known & de novo |
+| TF activity | — | chromVAR deviation score (JASPAR2020) |
 | 결과 파일 | final_de_results.csv | final_da_results.csv |
 | 요약 Excel | final_go_results.xlsx | final_da_summary.xlsx |
 
@@ -134,19 +146,32 @@ output/
 │   └── top_peaks_heatmap.png
 └── pairwise/
     └── 100uM_vs_CONTROL/
-        ├── final_da_results.csv        # DESeq2 결과 (전체 peaks)
-        ├── normalized_counts.csv       # VST 정규화 counts
-        ├── config_used.yml             # 재현성을 위한 config 복사
+        ├── final_da_results.csv            # DESeq2 결과 (전체 peaks)
+        ├── normalized_counts.csv           # VST 정규화 counts
+        ├── config_used.yml                 # 재현성을 위한 config 복사
         ├── volcano_plot.png
         ├── ma_plot.png
-        ├── go_enrichment_up_BP.csv     # GO (up peaks, Biological Process)
+        ├── peak_distribution_total.png     # 전체 DA peaks genomic 분포
+        ├── peak_distribution_up.png        # More-open peaks 분포
+        ├── peak_distribution_down.png      # Less-open peaks 분포
+        ├── peak_annotation_total.csv       # ChIPseeker 상세 어노테이션
+        ├── peak_annotation_up.csv
+        ├── peak_annotation_down.csv
+        ├── go_enrichment_up_BP.csv         # GO (up peaks, Biological Process)
         ├── go_dotplot_up_BP.png
         ├── kegg_enrichment_up.csv
         ├── go_barplot_up_combined.png
-        ├── motif/                      # HOMER 결과 (run_motif: true 시)
+        ├── motif/                          # HOMER 결과 (run_motif: true 시)
         │   ├── up/knownResults.html
-        │   └── down/knownResults.html
-        └── final_da_summary.xlsx       # 통합 Excel 보고서
+        │   ├── up/homerResults.html
+        │   ├── down/knownResults.html
+        │   └── top_known_motifs_up.csv
+        ├── chromvar/                       # chromVAR 결과 (run_chromvar: true 시)
+        │   ├── tf_variability.csv          # 전체 motif variability 점수
+        │   ├── tf_variability_plot.png     # 상위 가변 TF barplot
+        │   ├── tf_deviation_heatmap.png    # TF z-score heatmap
+        │   └── differential_tf_activity.csv  # 그룹 간 Wilcoxon 검정 결과
+        └── final_da_summary.xlsx           # 통합 Excel 보고서
 ```
 
 ---
@@ -170,4 +195,6 @@ consensus_bed = manifest["final_outputs"]["peaks"]["consensus_bed"]
 - [ChIPseeker](https://bioconductor.org/packages/ChIPseeker/)
 - [clusterProfiler](https://bioconductor.org/packages/clusterProfiler/)
 - [HOMER](http://homer.ucsd.edu/homer/ngs/peakMotifs.html)
+- [chromVAR](https://bioconductor.org/packages/chromVAR/)
+- [JASPAR2020](https://bioconductor.org/packages/JASPAR2020/)
 - 관련 파이프라인: `../atac-seq-pipeline/` (2차), `../RNA-Seq_DE_GO_analysis/` (RNA-seq 3차)

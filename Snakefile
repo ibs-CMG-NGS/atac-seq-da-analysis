@@ -41,6 +41,9 @@ rule all:
         # Motif (optional)
         expand("{out}/pairwise/{pair}/.motif_done.flag", out=OUT, pair=PAIRS)
             if RUN_MOTIF else [],
+        # chromVAR (optional)
+        expand("{out}/pairwise/{pair}/.chromvar_done.flag", out=OUT, pair=PAIRS)
+            if RUN_CHROMVAR else [],
 
 
 # ──────────────────────────────────────────────
@@ -173,6 +176,29 @@ rule motif_enrichment:
         "{out}/logs/{pair}_motif.log"
     shell:
         "Rscript src/analysis/05_motif_analysis.R "
+        "{params.config} {params.compare} {params.base} {params.out_dir} "
+        "> {log} 2>&1"
+
+
+# ──────────────────────────────────────────────
+# Rule 7: chromVAR TF activity (optional)
+# ──────────────────────────────────────────────
+rule chromvar_analysis:
+    input:
+        counts   = config["count_matrix_path"],
+        metadata = config["metadata_path"],
+        peaks    = config["consensus_peaks_path"],
+    output:
+        flag = touch("{out}/pairwise/{pair}/.chromvar_done.flag"),
+    params:
+        compare = lambda wc: wc.pair.split("_vs_")[0],
+        base    = lambda wc: wc.pair.split("_vs_")[1],
+        out_dir = "{out}/pairwise/{pair}/chromvar",
+        config  = lambda wildcards: workflow.configfiles[0],
+    log:
+        "{out}/logs/{pair}_chromvar.log"
+    shell:
+        "Rscript src/analysis/07_chromvar_analysis.R "
         "{params.config} {params.compare} {params.base} {params.out_dir} "
         "> {log} 2>&1"
 

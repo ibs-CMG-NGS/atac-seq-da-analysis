@@ -43,13 +43,8 @@ kegg_code   <- db_cfg$kegg_code
 txdb_name   <- db_cfg$txdb
 
 message("Loading TxDb: ", txdb_name)
-txdb   <- tryCatch(
-  get(txdb_name, envir = asNamespace(txdb_name)),
-  error = function(e) {
-    library(txdb_name, character.only = TRUE)
-    get(txdb_name)
-  }
-)
+library(txdb_name, character.only = TRUE)
+txdb <- get(txdb_name)
 library(org_db_name, character.only = TRUE)
 org_db <- get(org_db_name)
 
@@ -110,6 +105,79 @@ gene_sets_entrez <- lapply(da_sets, annotate_peaks_to_genes,
 
 for (nm in names(gene_sets_entrez)) {
   message(sprintf("  [%s] → %d genes", nm, length(gene_sets_entrez[[nm]])))
+}
+
+# ── Peak Genomic Distribution ──────────────────────────────────
+FEATURE_ORDER  <- c("Promoter", "5' UTR", "3' UTR", "Exon",
+                    "Intron", "Downstream", "Distal Intergenic")
+FEATURE_COLORS <- c(
+  "Promoter"          = "#E57373",
+  "5' UTR"            = "#FFB74D",
+  "3' UTR"            = "#FFF176",
+  "Exon"              = "#81C784",
+  "Intron"            = "#64B5F6",
+  "Downstream"        = "#CE93D8",
+  "Distal Intergenic" = "#B0BEC5"
+)
+
+plot_peak_distribution <- function(peak_ids, label, txdb, tss_dist, out_dir) {
+  if (length(peak_ids) == 0) {
+    message(sprintf("  [%s] peaks 없음 — distribution 건너뜀", label))
+    return(invisible(NULL))
+  }
+
+  gr <- tryCatch(parse_peaks_to_gr(peak_ids), error = function(e) GRanges())
+  if (length(gr) == 0) return(invisible(NULL))
+
+  anno <- suppressMessages(
+    annotatePeak(gr, tssRegion = c(-tss_dist, tss_dist),
+                 TxDb = txdb, verbose = FALSE)
+  )
+
+  write.csv(as.data.frame(anno@anno),
+            file.path(out_dir, sprintf("peak_annotation_%s.csv", label)),
+            row.names = FALSE)
+
+  feat_cat <- dplyr::case_when(
+    grepl("Promoter",   anno@anno$annotation) ~ "Promoter",
+    grepl("5' UTR",     anno@anno$annotation) ~ "5' UTR",
+    grepl("3' UTR",     anno@anno$annotation) ~ "3' UTR",
+    grepl("Exon",       anno@anno$annotation) ~ "Exon",
+    grepl("Intron",     anno@anno$annotation) ~ "Intron",
+    grepl("Downstream", anno@anno$annotation) ~ "Downstream",
+    TRUE                                      ~ "Distal Intergenic"
+  )
+
+  dist_df <- as.data.frame(table(feat_cat)) %>%
+    dplyr::rename(Feature = feat_cat, Count = Freq) %>%
+    dplyr::mutate(
+      Pct     = Count / sum(Count) * 100,
+      Feature = factor(Feature, levels = rev(FEATURE_ORDER))
+    )
+
+  p <- ggplot(dist_df, aes(x = Feature, y = Pct, fill = Feature)) +
+    geom_col(alpha = 0.9, show.legend = FALSE) +
+    geom_text(aes(label = sprintf("%.1f%%\n(n=%d)", Pct, Count)),
+              hjust = -0.05, size = 3) +
+    coord_flip() +
+    scale_fill_manual(values = FEATURE_COLORS, drop = FALSE) +
+    scale_y_continuous(expand = expansion(mult = c(0, 0.25))) +
+    labs(
+      title = sprintf("Genomic Distribution — %s peaks (%s vs %s)",
+                      label, compare_group, base_group),
+      x = NULL, y = "Peaks (%)"
+    ) +
+    theme_bw(base_size = 12) +
+    theme(plot.title = element_text(face = "bold", size = 11))
+
+  ggsave(file.path(out_dir, sprintf("peak_distribution_%s.png", label)),
+         p, width = 7, height = 4, dpi = 150)
+  message(sprintf("  [%s] distribution plot 저장 (%d peaks)", label, length(peak_ids)))
+}
+
+message("\nPeak genomic distribution 시각화 중...")
+for (gs_name in names(da_sets)) {
+  plot_peak_distribution(da_sets[[gs_name]], gs_name, txdb, tss_dist, output_dir)
 }
 
 # ── GO Enrichment ─────────────────────────────────────────────

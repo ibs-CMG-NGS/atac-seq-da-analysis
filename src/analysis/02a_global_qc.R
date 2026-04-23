@@ -9,6 +9,7 @@
 suppressPackageStartupMessages({
   library(yaml)
   library(DESeq2)
+  library(matrixStats)
   library(ggplot2)
   library(pheatmap)
   library(RColorBrewer)

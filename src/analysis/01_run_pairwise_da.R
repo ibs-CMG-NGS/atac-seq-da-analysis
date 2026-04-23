@@ -9,11 +9,15 @@
 suppressPackageStartupMessages({
   library(yaml)
   library(DESeq2)
+  library(apeglm)
+  library(ashr)
   library(dplyr)
   library(tibble)
 })
 
 source("src/utils/load_data.R")
+
+`%||%` <- function(a, b) if (!is.null(a)) a else b
 
 # ── Arguments ──────────────────────────────────────────────────
 args <- commandArgs(trailingOnly = TRUE)
@@ -80,7 +84,7 @@ lfc_cutoff  <- config$da_analysis$log2fc_cutoff %||% 1.0
 
 # 기본 results
 res_name <- resultsNames(dds)
-compare_coef <- res_name[grepl(compare_group, res_name, fixed = TRUE)]
+compare_coef <- res_name[grepl(paste0("_", compare_group, "$"), res_name)]
 
 res <- results(dds,
                contrast = c(group_var, compare_group, base_group),
@@ -128,6 +132,3 @@ message(sprintf("  Significant:    %d  (padj < %.2f, |log2FC| > %.1f)",
 message(sprintf("  More open (%s): %d", compare_group, sum(sig$log2FoldChange > 0)))
 message(sprintf("  Less open (%s): %d", compare_group, sum(sig$log2FoldChange < 0)))
 message("완료.")
-
-# R에 없는 경우를 위한 %||% 정의
-`%||%` <- function(a, b) if (!is.null(a)) a else b

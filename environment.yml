@@ -28,6 +28,8 @@ dependencies:
   # ── R: Bioconductor - DA Analysis ─────────────────────────
   - bioconductor-deseq2
   - bioconductor-apeglm
+  - r-ashr
+  - r-matrixstats
 
   # ── R: Bioconductor - Peak Annotation ─────────────────────
   - bioconductor-chipseeker
@@ -46,11 +48,13 @@ dependencies:
   - bioconductor-org.hs.eg.db
   - bioconductor-org.mm.eg.db
 
-  # ── R: Bioconductor - chromVAR (optional) ─────────────────
-  # - bioconductor-chromvar
-  # - bioconductor-motifmatchr
-  # - bioconductor-bsgenome.hsapiens.ucsc.hg38
-  # - bioconductor-bsgenome.mmusculus.ucsc.mm10
+  # ── R: Bioconductor - chromVAR (TF activity) ──────────────
+  - bioconductor-chromvar
+  - bioconductor-motifmatchr
+  - bioconductor-jaspar2020
+  - bioconductor-tfbstools
+  - bioconductor-bsgenome.hsapiens.ucsc.hg38
+  - bioconductor-bsgenome.mmusculus.ucsc.mm10
 
   # ── External: HOMER (motif analysis) ──────────────────────
   - homer

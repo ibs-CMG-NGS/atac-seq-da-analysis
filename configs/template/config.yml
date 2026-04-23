@@ -101,6 +101,15 @@ motif:
 chromvar:
   run_chromvar: false   # 컴퓨팅 비용이 크므로 기본 비활성화
 
+  # JASPAR2020 컬렉션 ("CORE" 권장; 전체: "CORE", "CNE", "PHYLOFACTS", "SPLICE" 등)
+  jaspar_collection: "CORE"
+
+  # 출력할 상위 가변 TF 수 (heatmap, variability plot)
+  top_tfs_n: 30
+
+  # 병렬 처리 worker 수 (Linux/WSL에서만 유효, Windows는 자동으로 1로 설정)
+  n_workers: 4
+
 # -------------------------
 # QC Plots Settings
 # -------------------------
