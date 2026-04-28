@@ -29,6 +29,14 @@ ns_colors   <- config$go_barplot$colors       %||%
   list(BP = "#E57373", CC = "#64B5F6", MF = "#81C784")
 pval_cut    <- config$enrichment$pvalue_cutoff %||% 0.05
 
+# 빈 CSV(결과 없음)를 안전하게 읽는 헬퍼
+safe_read_csv <- function(f) {
+  if (!file.exists(f) || file.size(f) == 0) return(NULL)
+  df <- tryCatch(read.csv(f), error = function(e) NULL)
+  if (is.null(df) || nrow(df) == 0) return(NULL)
+  df
+}
+
 message("\n=== GO Barplots ===\n")
 
 make_barplot <- function(df, title, fill_col = "#E57373", top_n = 10) {
@@ -54,10 +62,8 @@ for (gs_name in gene_lists) {
   # 각 Ontology별 barplot
   for (ont in namespaces) {
     csv_file <- file.path(output_dir, sprintf("go_enrichment_%s_%s.csv", gs_name, ont))
-    if (!file.exists(csv_file)) next
-
-    df <- read.csv(csv_file)
-    if (nrow(df) == 0) next
+    df <- safe_read_csv(csv_file)
+    if (is.null(df)) next
 
     p <- make_barplot(df,
                       title   = sprintf("GO %s — %s peaks (top %d)", ont, gs_name, top_n),
@@ -73,9 +79,8 @@ for (gs_name in gene_lists) {
   combined <- list()
   for (ont in namespaces) {
     csv_file <- file.path(output_dir, sprintf("go_enrichment_%s_%s.csv", gs_name, ont))
-    if (!file.exists(csv_file)) next
-    df <- read.csv(csv_file)
-    if (nrow(df) == 0) next
+    df <- safe_read_csv(csv_file)
+    if (is.null(df)) next
     df$ontology <- ont
     combined[[ont]] <- df %>% filter(p.adjust < pval_cut) %>% arrange(p.adjust) %>% slice_head(n = 5)
   }

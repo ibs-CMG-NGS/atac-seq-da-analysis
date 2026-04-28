@@ -58,17 +58,60 @@ da_sets <- classify_da_peaks(res_df, padj_cutoff, lfc_cutoff)
 message(sprintf("DA peaks — total: %d, up: %d, down: %d",
                 length(da_sets$total), length(da_sets$up), length(da_sets$down)))
 
+# ── Load peak_info for Interval_XXXX → coordinate mapping ──────
+peak_info_path <- config$peak_info_path %||% NULL
+peak_info_df   <- NULL
+if (!is.null(peak_info_path) && file.exists(peak_info_path)) {
+  peak_info_df <- read.csv(peak_info_path, stringsAsFactors = FALSE)
+  message(sprintf("  peak_info 로드: %d peaks (%s)", nrow(peak_info_df), peak_info_path))
+} else {
+  # count_matrix_path 옆에 peak_info가 있는 경우 자동 탐색
+  cm_path <- config$count_matrix_path %||% ""
+  candidate <- file.path(dirname(cm_path), "peak_info.csv")
+  # analysis_ready 쪽에서 탐색
+  dataset_dir <- file.path("data", config$dataset_name %||% "")
+  candidates <- c(
+    candidate,
+    Sys.glob(file.path("data", "*", "peak_info.csv")),
+    Sys.glob("/home/ngs/data/ygkim/2026/count_matrix/*_peak_info.csv")
+  )
+  for (p in candidates) {
+    if (file.exists(p)) {
+      peak_info_df <- read.csv(p, stringsAsFactors = FALSE)
+      message(sprintf("  peak_info 자동 탐색: %d peaks (%s)", nrow(peak_info_df), p))
+      break
+    }
+  }
+}
+
 # ── Parse peak IDs → GRanges ───────────────────────────────────
-# peak_id 형식: "chr1:100000-100500" 또는 "consensus_peak_1"
-# nf-core featureCounts의 Geneid는 "chr:start-end" 형식
+# peak_id 형식: "Interval_XXXX" (peak_info 경유) 또는 "chr:start-end"
 parse_peaks_to_gr <- function(peak_ids) {
-  # chr:start-end 형식 파싱
+  # Interval_XXXX 형식이고 peak_info_df가 있으면 좌표 조회
+  if (!is.null(peak_info_df) && any(grepl("^Interval_", peak_ids))) {
+    info <- peak_info_df[peak_info_df$peak_id %in% peak_ids, , drop = FALSE]
+    if (nrow(info) == 0) {
+      message(sprintf("  %d개 peak ID를 peak_info에서 찾을 수 없음", length(peak_ids)))
+      return(GRanges())
+    }
+    missing <- length(peak_ids) - nrow(info)
+    if (missing > 0) message(sprintf("  %d개 peak ID를 peak_info에서 찾을 수 없어 제외됨", missing))
+    chr <- info$chr
+    if (!grepl("^chr", chr[1])) chr <- paste0("chr", chr)
+    return(GRanges(
+      seqnames = chr,
+      ranges   = IRanges(start = as.integer(info$start), end = as.integer(info$end)),
+      peak_id  = info$peak_id
+    ))
+  }
+  # chr:start-end 형식 파싱 (fallback)
   parts <- strsplit(peak_ids, "[:-]")
   valid <- sapply(parts, length) == 3
   if (!all(valid)) {
     message(sprintf("  %d개 peak ID를 파싱할 수 없어 제외됨", sum(!valid)))
   }
   parts <- parts[valid]
+  if (length(parts) == 0) return(GRanges())
   GRanges(
     seqnames = sapply(parts, `[[`, 1),
     ranges   = IRanges(
@@ -238,8 +281,9 @@ for (gs_name in gene_lists) {
         dev.off()
       }
     } else {
+      # 결과 없어도 빈 CSV 생성 (Snakemake output 요구사항 충족)
       write.csv(data.frame(), out_csv, row.names = FALSE)
-      message("    → 결과 없음")
+      message("    → 결과 없음 (빈 파일 생성)")
     }
   }
 }
@@ -280,8 +324,9 @@ for (gs_name in gene_lists) {
       dev.off()
     }
   } else {
+    # 결과 없어도 빈 CSV 생성 (Snakemake output 요구사항 충족)
     write.csv(data.frame(), out_csv, row.names = FALSE)
-    message("    → 결과 없음")
+    message("    → 결과 없음 (빈 파일 생성)")
   }
 }
 

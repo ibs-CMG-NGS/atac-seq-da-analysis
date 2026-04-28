@@ -56,6 +56,13 @@ dependencies:
   - bioconductor-bsgenome.hsapiens.ucsc.hg38
   - bioconductor-bsgenome.mmusculus.ucsc.mm10
 
+  # ── R: Peak Overlap Analysis ──────────────────────────────
+  - r-complexupset
+  - r-venndiagram
+
+  # ── R: Time-course Analysis ───────────────────────────────
+  - r-factoextra
+
   # ── External: HOMER (motif analysis) ──────────────────────
   - homer
 

@@ -173,3 +173,34 @@ go_barplot:
 # -------------------------
 export:
   export_to_excel: true
+
+# -------------------------
+# CMG-SeqViewer Export
+# -------------------------
+seqviewer:
+  run_export: true          # false로 설정하면 parquet export 건너뜀
+
+# -------------------------
+# Peak Overlap Analysis (optional)
+# -------------------------
+peak_overlap:
+  run_overlap: false        # true로 설정하면 multi-comparison UpSet/Venn 분석 실행
+  min_peaks_for_go: 20      # GO 분석을 위한 최소 peak 수
+  go_ontology: "BP"         # GO 온톨로지 (BP, CC, MF)
+  venn_subsets: []          # Venn diagram에 사용할 비교군 조합 (최대 4-way)
+  # 예시:
+  # venn_subsets:
+  #   - ["Treatment_A_vs_CONTROL", "Treatment_B_vs_CONTROL"]
+  #   - ["Treatment_A_vs_CONTROL", "Treatment_B_vs_CONTROL", "Treatment_C_vs_CONTROL"]
+
+# -------------------------
+# Time-course Analysis (optional, time-series designs only)
+# -------------------------
+timecourse:
+  run_timecourse: false     # true로 설정하면 시계열 temporal 분석 실행
+  # time_order: ["CONTROL", "3H", "6H", "1D", "2D", "3D"]   # 시간순 condition 목록
+  # time_hours:  [0, 3, 6, 24, 48, 72]                       # 대응하는 시간(h) 값
+  # n_clusters: null          # null → elbow+silhouette 자동 선택, 숫자 → 지정값 사용
+  # cluster_method: "kmeans"  # "kmeans" 또는 "hierarchical"
+  # go_ontology: "BP"
+  # min_peaks_for_go: 50

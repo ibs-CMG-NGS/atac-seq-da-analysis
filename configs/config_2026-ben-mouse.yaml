@@ -1,0 +1,178 @@
+# =============================================================
+# ATAC-Seq Differential Accessibility (DA) Analysis - Config
+# Project : 2026-ben-mouse-atac
+# Species : mouse (mm10)
+# Conditions: CONTROL, 3H, 6H, 1D, 2D, 3D (n=3 replicates each)
+# =============================================================
+
+# -------------------------
+# Project Settings
+# -------------------------
+species: "mouse"
+
+# -------------------------
+# File Paths
+# -------------------------
+# nf-core/atacseq merged_library 수준 (생물학적 replicate per sample)
+count_matrix_path: "/home/ngs/data/ygkim/2026/2026-ben-mouse-atac/results/bwa/merged_library/macs2/broad_peak/consensus/consensus_peaks.mLb.clN.featureCounts.txt"
+peak_info_path: "/home/ngs/data/ygkim/2026/count_matrix/ben_peak_info.csv"
+
+# consensus peaks BED (HOMER/motif 분석 입력)
+consensus_peaks_path: "/home/ngs/data/ygkim/2026/2026-ben-mouse-atac/results/bwa/merged_library/macs2/broad_peak/consensus/consensus_peaks.mLb.clN.bed"
+
+# 샘플 메타데이터 (sample_id 열이 featureCounts 컬럼명과 일치해야 함)
+metadata_path: "data/2026-ben-mouse-atac/metadata.csv"
+
+output_dir: "output/2026-ben-mouse-atac"
+
+# -------------------------
+# DA Analysis Parameters
+# -------------------------
+da_analysis:
+  method: "DESeq2"
+
+  # 단순 처리 비교 - 배치 효과가 확인되면 "~ batch + condition"으로 변경
+  design_formula: "~ condition"
+
+  group_variable: "condition"
+
+  # 각 시점 vs CONTROL (compare_group, base_group)
+  pairwise_comparisons:
+    - ["3H",  "CONTROL"]
+    - ["6H",  "CONTROL"]
+    - ["1D",  "CONTROL"]
+    - ["2D",  "CONTROL"]
+    - ["3D",  "CONTROL"]
+
+  # 유의성 기준
+  padj_cutoff: 0.05
+  log2fc_cutoff: 1.0
+
+  # Peak 필터링: n=3 replicate 실험 → 최소 2개 샘플에서 10 read 이상
+  min_peak_count: 10
+  min_sample_n: 2
+
+# -------------------------
+# Peak Annotation & Enrichment
+# -------------------------
+enrichment:
+  gene_lists: ["total", "up", "down"]
+  go_ontologies: ["BP", "CC", "MF"]
+
+  # TSS ±10kb 내 유전자를 peak 타겟으로 매핑
+  tss_distance: 10000
+
+  pvalue_cutoff: 0.05
+  qvalue_cutoff: 0.25
+  min_gs_size: 5
+  max_gs_size: 500
+  min_gene_count: 2
+  plot_top_n: 15
+
+# -------------------------
+# Motif Analysis (HOMER)
+# -------------------------
+motif:
+  run_motif: true
+
+  # mm39 genome은 mm10 TxDb/HOMER genome으로 대체 사용
+  homer_genome: "mm10"
+
+  gene_lists: ["up", "down"]
+  homer_options: "-size 200 -mask"
+
+# -------------------------
+# chromVAR (TF activity, optional)
+# -------------------------
+chromvar:
+  run_chromvar: true
+  jaspar_collection: "CORE"
+  top_tfs_n: 30
+  n_workers: 4
+
+# -------------------------
+# QC Plots Settings
+# -------------------------
+qc_plots:
+  generate_global_qc: true
+  generate_pairwise_qc: true
+  sample_distance_method: "euclidean"
+  top_peaks_n: 500
+  ma_plot_ylim: [-5, 5]
+  heatmap_cluster_rows: true
+  heatmap_cluster_cols: true
+
+# -------------------------
+# Annotation Databases (자동 설정 - 수정 불필요)
+# -------------------------
+databases:
+  human:
+    organism_db: "org.Hs.eg.db"
+    kegg_code: "hsa"
+    txdb: "TxDb.Hsapiens.UCSC.hg38.knownGene"
+    bsgenome: "BSgenome.Hsapiens.UCSC.hg38"
+  mouse:
+    organism_db: "org.Mm.eg.db"
+    kegg_code: "mmu"
+    txdb: "TxDb.Mmusculus.UCSC.mm10.knownGene"
+    bsgenome: "BSgenome.Mmusculus.UCSC.mm10"
+
+# -------------------------
+# Plot Aesthetics
+# -------------------------
+plot_aesthetics:
+  volcano:
+    title: "Volcano Plot"
+    up_color: "#FF5733"
+    down_color: "#3375FF"
+    base_color: "grey"
+    point_size: 2.0
+    label_top_n: 0
+    base_font_size: 14
+
+  dotplot:
+    x_axis_variable: "GeneRatio"
+    show_n_categories: 15
+    font_size: 12
+    low_color: "#FFC300"
+    high_color: "#C70039"
+
+# -------------------------
+# GO Bar Plot Settings
+# -------------------------
+go_barplot:
+  top_n: 10
+  namespaces: ["BP", "CC", "MF"]
+  colors:
+    BP: "#E57373"
+    CC: "#64B5F6"
+    MF: "#81C784"
+
+# -------------------------
+# Export Options
+# -------------------------
+export:
+  export_to_excel: true
+
+# -------------------------
+# Peak Overlap Analysis (optional)
+# -------------------------
+peak_overlap:
+  run_overlap: true
+  min_peaks_for_go: 20
+  go_ontology: "BP"
+  venn_subsets:
+    - ["3H_vs_CONTROL", "6H_vs_CONTROL", "1D_vs_CONTROL"]
+    - ["1D_vs_CONTROL", "2D_vs_CONTROL", "3D_vs_CONTROL"]
+
+# -------------------------
+# Time-course Analysis (optional, time-series designs only)
+# -------------------------
+timecourse:
+  run_timecourse: true
+  time_order: ["CONTROL", "3H", "6H", "1D", "2D", "3D"]
+  time_hours:  [0, 3, 6, 24, 48, 72]
+  n_clusters: null
+  cluster_method: "kmeans"
+  go_ontology: "BP"
+  min_peaks_for_go: 50
